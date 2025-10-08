@@ -1,16 +1,16 @@
 // Solutions.tsx
-import React, { useState, useEffect, useRef } from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
+import React, { useEffect, useRef, useState } from "react"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { dracula } from "react-syntax-highlighter/dist/esm/styles/prism"
 
 import ScreenshotQueue from "../components/Queue/ScreenshotQueue"
 
-import { ProblemStatementData } from "../types/solutions"
 import SolutionCommands from "../components/Solutions/SolutionCommands"
-import Debug from "./Debug"
 import { useToast } from "../contexts/toast"
+import { ProblemStatementData } from "../types/solutions"
 import { COMMAND_KEY } from "../utils/platform"
+import Debug from "./Debug"
 
 export const ContentSection = ({
   title,
@@ -124,14 +124,14 @@ export const ComplexitySection = ({
     if (bigORegex.test(complexity)) {
       return complexity;
     }
-    
+
     // Concat Big O notation to the complexity
     return `O(${complexity})`;
   };
-  
+
   const formattedTimeComplexity = formatComplexity(timeComplexity);
   const formattedSpaceComplexity = formatComplexity(spaceComplexity);
-  
+
   return (
     <div className="space-y-2">
       <h2 className="text-[13px] font-medium text-white tracking-wide">

@@ -1,13 +1,20 @@
-import { app, BrowserWindow, screen, shell, ipcMain } from "electron"
-import path from "path"
+import * as dotenv from "dotenv"
+import { app, BrowserWindow, screen, shell } from "electron"
 import fs from "fs"
+import path from "path"
+import { initAutoUpdater } from "./autoUpdater"
+import { configHelper } from "./ConfigHelper"
 import { initializeIpcHandlers } from "./ipcHandlers"
 import { ProcessingHelper } from "./ProcessingHelper"
 import { ScreenshotHelper } from "./ScreenshotHelper"
 import { ShortcutsHelper } from "./shortcuts"
-import { initAutoUpdater } from "./autoUpdater"
-import { configHelper } from "./ConfigHelper"
-import * as dotenv from "dotenv"
+
+interface IProblemInfo {
+  problem_statement: string
+  constraints: string
+  example_input: string
+  example_output: string
+}
 
 // Constants
 const isDev = process.env.NODE_ENV === "development"
@@ -32,7 +39,7 @@ const state = {
 
   // View and state management
   view: "queue" as "queue" | "solutions" | "debug",
-  problemInfo: null as any,
+  problemInfo: null as IProblemInfo,
   hasDebugged: false,
 
   // Processing events
@@ -57,8 +64,8 @@ export interface IProcessingHelperDeps {
   getMainWindow: () => BrowserWindow | null
   getView: () => "queue" | "solutions" | "debug"
   setView: (view: "queue" | "solutions" | "debug") => void
-  getProblemInfo: () => any
-  setProblemInfo: (info: any) => void
+  getProblemInfo: () => IProblemInfo
+  setProblemInfo: (info: IProblemInfo) => void
   getScreenshotQueue: () => string[]
   getExtraScreenshotQueue: () => string[]
   clearQueues: () => void
@@ -278,7 +285,7 @@ async function createWindow(): Promise<void> {
     // In production, load from the built files
     const indexPath = path.join(__dirname, "../dist/index.html")
     console.log("Loading production build:", indexPath)
-    
+
     if (fs.existsSync(indexPath)) {
       state.mainWindow.loadFile(indexPath)
     } else {
@@ -346,15 +353,15 @@ async function createWindow(): Promise<void> {
   state.currentX = bounds.x
   state.currentY = bounds.y
   state.isWindowVisible = true
-  
+
   // Set opacity based on user preferences or hide initially
   // Ensure the window is visible for the first launch or if opacity > 0.1
   const savedOpacity = configHelper.getOpacity();
   console.log(`Initial opacity from config: ${savedOpacity}`);
-  
+
   // Always make sure window is shown first
   state.mainWindow.showInactive(); // Use showInactive for consistency
-  
+
   if (savedOpacity <= 0.1) {
     console.log('Initial opacity too low, setting to 0 and hiding window');
     state.mainWindow.setOpacity(0);
@@ -510,26 +517,26 @@ async function initializeApp() {
     const sessionPath = path.join(appDataPath, 'session')
     const tempPath = path.join(appDataPath, 'temp')
     const cachePath = path.join(appDataPath, 'cache')
-    
+
     // Create directories if they don't exist
     for (const dir of [appDataPath, sessionPath, tempPath, cachePath]) {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true })
       }
     }
-    
+
     app.setPath('userData', appDataPath)
-    app.setPath('sessionData', sessionPath)      
+    app.setPath('sessionData', sessionPath)
     app.setPath('temp', tempPath)
     app.setPath('cache', cachePath)
-      
+
     loadEnvVariables()
-    
+
     // Ensure a configuration file exists
     if (!configHelper.hasApiKey()) {
       console.log("No API key found in configuration. User will need to set up.")
     }
-    
+
     initializeHelpers()
     initializeIpcHandlers({
       getMainWindow,
@@ -584,7 +591,7 @@ app.on("open-url", (event, url) => {
 // Handle second instance (removed auth callback handling)
 app.on("second-instance", (event, commandLine) => {
   console.log("second-instance event received:", commandLine)
-  
+
   // Focus or create the main window
   if (!state.mainWindow) {
     createWindow()
@@ -630,11 +637,11 @@ function getScreenshotHelper(): ScreenshotHelper | null {
   return state.screenshotHelper
 }
 
-function getProblemInfo(): any {
+function getProblemInfo(): IProblemInfo {
   return state.problemInfo
 }
 
-function setProblemInfo(problemInfo: any): void {
+function setProblemInfo(problemInfo: IProblemInfo): void {
   state.problemInfo = problemInfo
 }
 

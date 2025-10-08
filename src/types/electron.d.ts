@@ -1,3 +1,5 @@
+import { IDebugPayload, ISolutionPayload, ProblemStatementData, UpdateDownloadedEvent, UpdateInfo } from "./ipc";
+
 export interface ElectronAPI {
   // Original methods
   openSubscriptionPortal: (authData: {
@@ -23,11 +25,11 @@ export interface ElectronAPI {
   onResetView: (callback: () => void) => () => void
   onSolutionStart: (callback: () => void) => () => void
   onDebugStart: (callback: () => void) => () => void
-  onDebugSuccess: (callback: (data: any) => void) => () => void
+  onDebugSuccess: (callback: (data: IDebugPayload) => void) => () => void
   onSolutionError: (callback: (error: string) => void) => () => void
   onProcessingNoScreenshots: (callback: () => void) => () => void
-  onProblemExtracted: (callback: (data: any) => void) => () => void
-  onSolutionSuccess: (callback: (data: any) => void) => () => void
+  onProblemExtracted: (callback: (data: ProblemStatementData) => void) => () => void
+  onSolutionSuccess: (callback: (data: ISolutionPayload) => void) => () => void
   onUnauthorized: (callback: () => void) => () => void
   onDebugError: (callback: (error: string) => void) => () => void
   openExternal: (url: string) => void
@@ -43,8 +45,8 @@ export interface ElectronAPI {
   onSubscriptionPortalClosed: (callback: () => void) => () => void
   startUpdate: () => Promise<{ success: boolean; error?: string }>
   installUpdate: () => void
-  onUpdateAvailable: (callback: (info: any) => void) => () => void
-  onUpdateDownloaded: (callback: (info: any) => void) => () => void
+  onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void
+  onUpdateDownloaded: (callback: (info: UpdateDownloadedEvent) => void) => () => void
 
   decrementCredits: () => Promise<void>
   setInitialCredits: (credits: number) => Promise<void>
@@ -52,7 +54,7 @@ export interface ElectronAPI {
   onOutOfCredits: (callback: () => void) => () => void
   openSettingsPortal: () => Promise<void>
   getPlatform: () => string
-  
+
   // New methods for OpenAI integration
   getConfig: () => Promise<{ apiKey: string; model: string }>
   updateConfig: (config: { apiKey?: string; model?: string }) => Promise<boolean>
@@ -66,15 +68,6 @@ export interface ElectronAPI {
 declare global {
   interface Window {
     electronAPI: ElectronAPI
-    electron: {
-      ipcRenderer: {
-        on: (channel: string, func: (...args: any[]) => void) => void
-        removeListener: (
-          channel: string,
-          func: (...args: any[]) => void
-        ) => void
-      }
-    }
     __CREDITS__: number
     __LANGUAGE__: string
     __IS_INITIALIZED__: boolean
