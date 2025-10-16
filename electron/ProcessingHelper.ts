@@ -1,9 +1,9 @@
 // ProcessingHelper.ts
-import Anthropic from '@anthropic-ai/sdk'
+import Anthropic, { APIError as ClaudeAPIError } from '@anthropic-ai/sdk'
 import * as axios from "axios"
 import { BrowserWindow } from "electron"
 import fs from "node:fs"
-import { OpenAI } from "openai"
+import { OpenAI, APIError as OpenAiAPIError } from "openai"
 import { configHelper } from "./ConfigHelper"
 import { ScreenshotHelper } from "./ScreenshotHelper"
 import { IProcessingHelperDeps } from "./main"
@@ -30,18 +30,7 @@ interface GeminiResponse {
     finishReason: string;
   }>;
 }
-interface AnthropicMessage {
-  role: 'user' | 'assistant';
-  content: Array<{
-    type: 'text' | 'image';
-    text?: string;
-    source?: {
-      type: 'base64';
-      media_type: string;
-      data: string;
-    };
-  }>;
-}
+
 export class ProcessingHelper {
   private deps: IProcessingHelperDeps
   private screenshotHelper: ScreenshotHelper
@@ -312,7 +301,7 @@ export class ProcessingHelper {
           result.data
         )
         this.deps.setView("solutions")
-      } catch (error: any) {
+      } catch (error: unknown) {
         mainWindow.webContents.send(
           this.deps.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR,
           error
@@ -323,7 +312,7 @@ export class ProcessingHelper {
             this.deps.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR,
             "Processing was canceled by the user."
           )
-        } else {
+        } else if (error instanceof Error) {
           mainWindow.webContents.send(
             this.deps.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR,
             error.message || "Server error. Please try again."
@@ -419,13 +408,13 @@ export class ProcessingHelper {
             result.error
           )
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (axios.isCancel(error)) {
           mainWindow.webContents.send(
             this.deps.PROCESSING_EVENTS.DEBUG_ERROR,
             "Extra processing was canceled by the user."
           )
-        } else {
+        } else if (error instanceof Error) {
           mainWindow.webContents.send(
             this.deps.PROCESSING_EVENTS.DEBUG_ERROR,
             error.message
@@ -612,25 +601,28 @@ export class ProcessingHelper {
           const responseText = (response.content[0] as { type: 'text', text: string }).text;
           const jsonText = responseText.replace(/```json|```/g, '').trim();
           problemInfo = JSON.parse(jsonText);
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Error using Anthropic API:", error);
 
+          let errorMessage = "Failed to process with Anthropic API. Please check your API key or try again later."
+
           // Add specific handling for Claude's limitations
-          if (error.status === 429) {
-            return {
-              success: false,
-              error: "Claude API rate limit exceeded. Please wait a few minutes before trying again."
-            };
-          } else if (error.status === 413 || (error.message && error.message.includes("token"))) {
-            return {
-              success: false,
-              error: "Your screenshots contain too much information for Claude to process. Switch to OpenAI or Gemini in settings which can handle larger inputs."
-            };
+          if (error instanceof ClaudeAPIError) {
+            if (error.status === 429) {
+              return {
+                success: false,
+                error: "Claude API rate limit exceeded. Please wait a few minutes before trying again."
+              };
+            } else if (error.status === 413) {
+                errorMessage = "Your screenshots contain too much information for Claude to process. Switch to OpenAI or Gemini in settings which can handle larger inputs."
+            }
+          } else if (error instanceof Error && error.message.includes("token")) {
+            errorMessage = "Your screenshots contain too much information for Claude to process. Switch to OpenAI or Gemini in settings which can handle larger inputs."
           }
 
           return {
             success: false,
-            error: "Failed to process with Anthropic API. Please check your API key or try again later."
+            error: errorMessage
           };
         }
       }
@@ -678,7 +670,7 @@ export class ProcessingHelper {
       }
 
       return { success: false, error: "Failed to process screenshots" };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If the request was cancelled, don't retry
       if (axios.isCancel(error)) {
         return {
@@ -687,28 +679,25 @@ export class ProcessingHelper {
         };
       }
 
+      let errorMessage = "Failed to process screenshots. Please try again."
+
       // Handle OpenAI API errors specifically
-      if (error?.response?.status === 401) {
-        return {
-          success: false,
-          error: "Invalid OpenAI API key. Please check your settings."
-        };
-      } else if (error?.response?.status === 429) {
-        return {
-          success: false,
-          error: "OpenAI API rate limit exceeded or insufficient credits. Please try again later."
-        };
-      } else if (error?.response?.status === 500) {
-        return {
-          success: false,
-          error: "OpenAI server error. Please try again later."
-        };
+      if (error instanceof OpenAiAPIError) {
+        if (error.status === 401) {
+          errorMessage = 'Invalid OpenAI API key. Please check your settings.';
+        } else if (error.status === 429) {
+          errorMessage = 'OpenAI API rate limit exceeded or insufficient credits. Please try again later.';
+        } else if (error.status === 500) {
+          errorMessage = 'OpenAI server error. Please try again later.';
+        }
+      } else if (error instanceof Error) {
+        errorMessage = `Error: ${error.message}`;
       }
 
       console.error("API Error Details:", error);
       return {
         success: false,
-        error: error.message || "Failed to process screenshots. Please try again."
+        error: errorMessage
       };
     }
   }
@@ -864,25 +853,28 @@ Your solution should be efficient, well-commented, and handle edge cases.
           });
 
           responseContent = (response.content[0] as { type: 'text', text: string }).text;
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Error using Anthropic API for solution:", error);
 
+          let errorMessage = "Failed to process with Anthropic API. Please check your API key or try again later."
+
           // Add specific handling for Claude's limitations
-          if (error.status === 429) {
-            return {
-              success: false,
-              error: "Claude API rate limit exceeded. Please wait a few minutes before trying again."
-            };
-          } else if (error.status === 413 || (error.message && error.message.includes("token"))) {
-            return {
-              success: false,
-              error: "Your screenshots contain too much information for Claude to process. Switch to OpenAI or Gemini in settings which can handle larger inputs."
-            };
+          if (error instanceof ClaudeAPIError) {
+            if (error.status === 429) {
+              return {
+                success: false,
+                error: "Claude API rate limit exceeded. Please wait a few minutes before trying again."
+              };
+            } else if (error.status === 413) {
+                errorMessage = "Your screenshots contain too much information for Claude to process. Switch to OpenAI or Gemini in settings which can handle larger inputs."
+            }
+          } else if (error instanceof Error && error.message.includes("token")) {
+            errorMessage = "Your screenshots contain too much information for Claude to process. Switch to OpenAI or Gemini in settings which can handle larger inputs."
           }
 
           return {
             success: false,
-            error: "Failed to generate solution with Anthropic API. Please check your API key or try again later."
+            error: errorMessage
           };
         }
       }
@@ -956,7 +948,7 @@ Your solution should be efficient, well-commented, and handle edge cases.
       };
 
       return { success: true, data: formattedResponse };
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (axios.isCancel(error)) {
         return {
           success: false,
@@ -964,20 +956,20 @@ Your solution should be efficient, well-commented, and handle edge cases.
         };
       }
 
-      if (error?.response?.status === 401) {
-        return {
-          success: false,
-          error: "Invalid OpenAI API key. Please check your settings."
-        };
-      } else if (error?.response?.status === 429) {
-        return {
-          success: false,
-          error: "OpenAI API rate limit exceeded or insufficient credits. Please try again later."
-        };
+      let errorMessage = "Failed to generate solution"
+
+      if (error instanceof OpenAiAPIError) {
+        if (error.status === 401) {
+          errorMessage = 'Invalid OpenAI API key. Please check your settings.';
+        } else if (error.status === 429) {
+          errorMessage = 'OpenAI API rate limit exceeded or insufficient credits. Please try again later.';
+        }
+      } else if (error instanceof Error) {
+        errorMessage = `Error: ${error.message}`;
       }
 
       console.error("Solution generation error:", error);
-      return { success: false, error: error.message || "Failed to generate solution" };
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -1222,25 +1214,28 @@ If you include code examples, use proper markdown code blocks with language spec
           });
 
           debugContent = (response.content[0] as { type: 'text', text: string }).text;
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Error using Anthropic API for debugging:", error);
 
+          let errorMessage = "Failed to process with Anthropic API. Please check your API key or try again later."
+
           // Add specific handling for Claude's limitations
-          if (error.status === 429) {
-            return {
-              success: false,
-              error: "Claude API rate limit exceeded. Please wait a few minutes before trying again."
-            };
-          } else if (error.status === 413 || (error.message && error.message.includes("token"))) {
-            return {
-              success: false,
-              error: "Your screenshots contain too much information for Claude to process. Switch to OpenAI or Gemini in settings which can handle larger inputs."
-            };
+          if (error instanceof ClaudeAPIError) {
+            if (error.status === 429) {
+              return {
+                success: false,
+                error: "Claude API rate limit exceeded. Please wait a few minutes before trying again."
+              };
+            } else if (error.status === 413) {
+                errorMessage = "Your screenshots contain too much information for Claude to process. Switch to OpenAI or Gemini in settings which can handle larger inputs."
+            }
+          } else if (error instanceof Error && error.message.includes("token")) {
+            errorMessage = "Your screenshots contain too much information for Claude to process. Switch to OpenAI or Gemini in settings which can handle larger inputs."
           }
 
           return {
             success: false,
-            error: "Failed to process debug request with Anthropic API. Please check your API key or try again later."
+            error: errorMessage
           };
         }
       }
@@ -1283,9 +1278,15 @@ If you include code examples, use proper markdown code blocks with language spec
       };
 
       return { success: true, data: response };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Debug processing error:", error);
-      return { success: false, error: error.message || "Failed to process debug request" };
+
+      let errorMessage = "Failed to process debug request";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      return { success: false, error: errorMessage };
     }
   }
 

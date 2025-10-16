@@ -10,12 +10,10 @@ import { Screenshot } from "../types/screenshots"
 import { ComplexitySection, ContentSection } from "./Solutions"
 
 const CodeSection = ({
-  title,
   code,
   isLoading,
   currentLanguage
 }: {
-  title: string
   code: React.ReactNode
   isLoading: boolean
   currentLanguage: string
@@ -280,7 +278,6 @@ const Debug: React.FC<DebugProps> = ({
         onTooltipVisibilityChange={handleTooltipVisibilityChange}
         isProcessing={isProcessing}
         extraScreenshots={screenshots}
-        credits={window.__CREDITS__}
         currentLanguage={currentLanguage}
         setLanguage={setLanguage}
       />
@@ -311,7 +308,6 @@ const Debug: React.FC<DebugProps> = ({
 
             {/* Code Section */}
             <CodeSection
-              title="Original Code"
               code={newCode}
               isLoading={!newCode}
               currentLanguage={currentLanguage}
@@ -334,7 +330,6 @@ const Debug: React.FC<DebugProps> = ({
                   {(() => {
                     // First identify key sections based on common patterns in the debug output
                     const sections: {title:string, content: string[]}[] = [];
-                    let currentSection = { title: '', content: [] };
 
                     // Split by possible section headers (### or ##)
                     const mainSections = debugAnalysis.split(/(?=^#{1,3}\s|^\*\*\*|^\s*[A-Z][\w\s]+\s*$)/m);
@@ -381,10 +376,6 @@ const Debug: React.FC<DebugProps> = ({
                                 );
 
                                 if (codeBlockEndIndex > lineIndex) {
-                                  // Extract language if specified
-                                  const langMatch = line.trim().match(/```(\w+)/);
-                                  const language = langMatch ? langMatch[1] : '';
-
                                   // Get the code content
                                   const codeContent = section.content
                                     .slice(lineIndex + 1, codeBlockEndIndex)

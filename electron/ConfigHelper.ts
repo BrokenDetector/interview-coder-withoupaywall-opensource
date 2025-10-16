@@ -3,9 +3,9 @@ import { app } from "electron"
 import { EventEmitter } from "events"
 import fs from "node:fs"
 import path from "node:path"
-import { OpenAI } from "openai"
+import { APIError as OpenAiAPIError, OpenAI } from "openai"
 
-interface Config {
+export interface Config {
   apiKey: string;
   apiProvider: "openai" | "gemini" | "anthropic";  // Added provider selection
   extractionModel: string;
@@ -33,7 +33,7 @@ export class ConfigHelper extends EventEmitter {
     try {
       this.configPath = path.join(app.getPath('userData'), 'config.json');
       console.log('Config path:', this.configPath);
-    } catch (err) {
+    } catch {
       console.warn('Could not access user data path, using fallback');
       this.configPath = path.join(process.cwd(), 'config.json');
     }
@@ -325,19 +325,21 @@ export class ConfigHelper extends EventEmitter {
       // Make a simple API call to test the key
       await openai.models.list();
       return { valid: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('OpenAI API key test failed:', error);
 
       // Determine the specific error type for better error messages
       let errorMessage = 'Unknown error validating OpenAI API key';
 
-      if (error.status === 401) {
-        errorMessage = 'Invalid API key. Please check your OpenAI key and try again.';
-      } else if (error.status === 429) {
-        errorMessage = 'Rate limit exceeded. Your OpenAI API key has reached its request limit or has insufficient quota.';
-      } else if (error.status === 500) {
-        errorMessage = 'OpenAI server error. Please try again later.';
-      } else if (error.message) {
+      if (error instanceof OpenAiAPIError) {
+        if (error.status === 401) {
+          errorMessage = 'Invalid API key. Please check your OpenAI key and try again.';
+        } else if (error.status === 429) {
+          errorMessage = 'Rate limit exceeded. Your OpenAI API key has reached its request limit or has insufficient quota.';
+        } else if (error.status === 500) {
+          errorMessage = 'OpenAI server error. Please try again later.';
+        }
+      } else if (error instanceof Error) {
         errorMessage = `Error: ${error.message}`;
       }
 
@@ -358,11 +360,11 @@ export class ConfigHelper extends EventEmitter {
         return { valid: true };
       }
       return { valid: false, error: 'Invalid Gemini API key format.' };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Gemini API key test failed:', error);
       let errorMessage = 'Unknown error validating Gemini API key';
 
-      if (error.message) {
+      if (error instanceof Error) {
         errorMessage = `Error: ${error.message}`;
       }
 
@@ -383,11 +385,11 @@ export class ConfigHelper extends EventEmitter {
         return { valid: true };
       }
       return { valid: false, error: 'Invalid Anthropic API key format.' };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Anthropic API key test failed:', error);
       let errorMessage = 'Unknown error validating Anthropic API key';
 
-      if (error.message) {
+      if (error instanceof Error) {
         errorMessage = `Error: ${error.message}`;
       }
 

@@ -14,4 +14,4 @@ export interface IDebugPayload {
 }
 
 export type { UpdateDownloadedEvent, UpdateInfo } from "electron-updater";
-export type { ProblemStatementData } from "./solutions";
+export type { IProblemStatementData } from "./solutions";

@@ -1,4 +1,5 @@
-import { IDebugPayload, ISolutionPayload, ProblemStatementData, UpdateDownloadedEvent, UpdateInfo } from "./ipc";
+import { Config } from "../../electron/ConfigHelper";
+import { IDebugPayload, IProblemStatementData, ISolutionPayload, UpdateDownloadedEvent, UpdateInfo } from "./ipc";
 
 export interface ElectronAPI {
   // Original methods
@@ -28,7 +29,7 @@ export interface ElectronAPI {
   onDebugSuccess: (callback: (data: IDebugPayload) => void) => () => void
   onSolutionError: (callback: (error: string) => void) => () => void
   onProcessingNoScreenshots: (callback: () => void) => () => void
-  onProblemExtracted: (callback: (data: ProblemStatementData) => void) => () => void
+  onProblemExtracted: (callback: (data: IProblemStatementData) => void) => () => void
   onSolutionSuccess: (callback: (data: ISolutionPayload) => void) => () => void
   onUnauthorized: (callback: () => void) => () => void
   onDebugError: (callback: (error: string) => void) => () => void
@@ -56,13 +57,21 @@ export interface ElectronAPI {
   getPlatform: () => string
 
   // New methods for OpenAI integration
-  getConfig: () => Promise<{ apiKey: string; model: string }>
-  updateConfig: (config: { apiKey?: string; model?: string }) => Promise<boolean>
+
+  // Previous type for config was outdated
+  getConfig: () => Promise<Config>
+  updateConfig: (config: Pick<Config>) => Promise<boolean>
+  onShowSettings: (callback: () => void) => () => void
   checkApiKey: () => Promise<boolean>
   validateApiKey: (apiKey: string) => Promise<{ valid: boolean; error?: string }>
   openLink: (url: string) => void
   onApiKeyInvalid: (callback: () => void) => () => void
-  removeListener: (eventName: string, callback: (...args: any[]) => void) => void
+  onDeleteLastScreenshot: (callback: () => void) => () => void
+  deleteLastScreenshot: () => Promise<{ success: boolean; error?: string }>
+
+  // We can remove removeListener and unsubscribe like this:
+  // const unsubscribeApiKeyInvalid = window.electronAPI.onApiKeyInvalid(onApiKeyInvalid)
+  // unsubscribeApiKeyInvalid()
 }
 
 declare global {

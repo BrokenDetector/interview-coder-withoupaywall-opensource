@@ -1,6 +1,10 @@
 console.log("Preload script starting...")
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron"
-import { IDebugPayload, ISolutionPayload, ProblemStatementData, UpdateDownloadedEvent, UpdateInfo } from "../src/types/ipc"
+import { IDebugPayload, IProblemStatementData, ISolutionPayload, UpdateDownloadedEvent, UpdateInfo } from "../src/types/ipc"
+import { Config } from "./ConfigHelper"
+
+// as far as i know, we have to use require, not import, so disable lint here
+// eslint-disable-next-line
 const { shell } = require("electron")
 
 export const PROCESSING_EVENTS = {
@@ -120,8 +124,8 @@ const electronAPI = {
       ipcRenderer.removeListener(PROCESSING_EVENTS.OUT_OF_CREDITS, subscription)
     }
   },
-  onProblemExtracted: (callback: (data: ProblemStatementData) => void) => {
-    const subscription = (_: IpcRendererEvent, data: ProblemStatementData) => callback(data)
+  onProblemExtracted: (callback: (data: IProblemStatementData) => void) => {
+    const subscription = (_: IpcRendererEvent, data: IProblemStatementData) => callback(data)
     ipcRenderer.on(PROCESSING_EVENTS.PROBLEM_EXTRACTED, subscription)
     return () => {
       ipcRenderer.removeListener(
@@ -206,7 +210,7 @@ const electronAPI = {
 
   // New methods for OpenAI API integration
   getConfig: () => ipcRenderer.invoke("get-config"),
-  updateConfig: (config: { apiKey?: string; model?: string; language?: string; opacity?: number }) =>
+  updateConfig: (config: Config) =>
     ipcRenderer.invoke("update-config", config),
   onShowSettings: (callback: () => void) => {
     const subscription = () => callback()
@@ -226,9 +230,6 @@ const electronAPI = {
     return () => {
       ipcRenderer.removeListener(PROCESSING_EVENTS.API_KEY_INVALID, subscription)
     }
-  },
-  removeListener: (eventName: string, callback: (...args: any[]) => void) => {
-    ipcRenderer.removeListener(eventName, callback)
   },
   onDeleteLastScreenshot: (callback: () => void) => {
     const subscription = () => callback()

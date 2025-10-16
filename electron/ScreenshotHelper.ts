@@ -271,11 +271,6 @@ export class ScreenshotHelper {
           "All screenshot methods failed, creating placeholder image"
         );
 
-        // Create a 1x1 transparent PNG as fallback
-        const fallbackBuffer = Buffer.from(
-          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
-          "base64"
-        );
         console.log("Created placeholder image as fallback");
 
         // Show the error but return a valid buffer so the app doesn't crash

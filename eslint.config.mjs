@@ -69,6 +69,15 @@ export default [
       'css/no-invalid-at-rules': 'off',
       // Allow !important
       'css/no-important': 'off',
+      // Allow not widely available css features
+      'css/use-baseline': 'off'
     },
   },
+  { ignores: [
+      'dist/',
+      'dist-electron/',
+      'postcss.config.js',
+      'package-lock.json'
+    ]
+  }
 ];

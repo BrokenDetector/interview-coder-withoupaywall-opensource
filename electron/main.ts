@@ -2,6 +2,7 @@ import * as dotenv from "dotenv"
 import { app, BrowserWindow, screen, shell } from "electron"
 import fs from "fs"
 import path from "path"
+import { IProblemStatementData } from "../src/types/solutions"
 import { initAutoUpdater } from "./autoUpdater"
 import { configHelper } from "./ConfigHelper"
 import { initializeIpcHandlers } from "./ipcHandlers"
@@ -9,12 +10,6 @@ import { ProcessingHelper } from "./ProcessingHelper"
 import { ScreenshotHelper } from "./ScreenshotHelper"
 import { ShortcutsHelper } from "./shortcuts"
 
-interface IProblemInfo {
-  problem_statement: string
-  constraints: string
-  example_input: string
-  example_output: string
-}
 
 // Constants
 const isDev = process.env.NODE_ENV === "development"
@@ -39,7 +34,7 @@ const state = {
 
   // View and state management
   view: "queue" as "queue" | "solutions" | "debug",
-  problemInfo: null as IProblemInfo,
+  problemInfo: null,
   hasDebugged: false,
 
   // Processing events
@@ -64,8 +59,8 @@ export interface IProcessingHelperDeps {
   getMainWindow: () => BrowserWindow | null
   getView: () => "queue" | "solutions" | "debug"
   setView: (view: "queue" | "solutions" | "debug") => void
-  getProblemInfo: () => IProblemInfo
-  setProblemInfo: (info: IProblemInfo) => void
+  getProblemInfo: () => IProblemStatementData
+  setProblemInfo: (info: IProblemStatementData) => void
   getScreenshotQueue: () => string[]
   getExtraScreenshotQueue: () => string[]
   clearQueues: () => void
@@ -185,7 +180,7 @@ const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
   app.quit()
 } else {
-  app.on("second-instance", (event, commandLine) => {
+  app.on("second-instance", () => {
     // Someone tried to run a second instance, we should focus our window.
     if (state.mainWindow) {
       if (state.mainWindow.isMinimized()) state.mainWindow.restore()
@@ -637,11 +632,11 @@ function getScreenshotHelper(): ScreenshotHelper | null {
   return state.screenshotHelper
 }
 
-function getProblemInfo(): IProblemInfo {
+function getProblemInfo(): IProblemStatementData {
   return state.problemInfo
 }
 
-function setProblemInfo(problemInfo: IProblemInfo): void {
+function setProblemInfo(problemInfo: IProblemStatementData): void {
   state.problemInfo = problemInfo
 }
 
@@ -694,28 +689,8 @@ function getHasDebugged(): boolean {
 
 // Export state and functions for other modules
 export {
-  state,
-  createWindow,
-  hideMainWindow,
-  showMainWindow,
-  toggleMainWindow,
-  setWindowDimensions,
-  moveWindowHorizontal,
-  moveWindowVertical,
-  getMainWindow,
-  getView,
-  setView,
-  getScreenshotHelper,
-  getProblemInfo,
-  setProblemInfo,
-  getScreenshotQueue,
-  getExtraScreenshotQueue,
-  clearQueues,
-  takeScreenshot,
-  getImagePreview,
-  deleteScreenshot,
-  setHasDebugged,
-  getHasDebugged
+  clearQueues, createWindow, deleteScreenshot, getExtraScreenshotQueue, getHasDebugged, getImagePreview, getMainWindow, getProblemInfo, getScreenshotHelper, getScreenshotQueue, getView, hideMainWindow, moveWindowHorizontal,
+  moveWindowVertical, setHasDebugged, setProblemInfo, setView, setWindowDimensions, showMainWindow, state, takeScreenshot, toggleMainWindow
 }
 
 app.whenReady().then(initializeApp)
