@@ -169,9 +169,16 @@ export class ScreenshotHelper {
         `Screenshot captured successfully, size: ${buffer.length} bytes`
       );
       return buffer;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error capturing screenshot:", error);
-      throw new Error(`Failed to capture screenshot: ${error.message}`);
+
+      let errorMessage = "Failed to capture screenshot"
+
+      if (error instanceof Error) {
+        errorMessage = error.message
+      }
+
+      throw new Error(`Failed to capture screenshot: ${errorMessage}`);
     }
   }
 
@@ -395,9 +402,16 @@ export class ScreenshotHelper {
         );
       }
       return { success: true };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error deleting file:", error);
-      return { success: false, error: error.message };
+
+      let errorMessage = "Failed to delete file"
+
+      if (error instanceof Error) {
+        errorMessage = error.message
+      }
+
+      return { success: false, error: errorMessage };
     }
   }
 

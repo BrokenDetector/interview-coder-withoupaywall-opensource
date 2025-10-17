@@ -1,6 +1,6 @@
-import { autoUpdater } from "electron-updater"
-import { BrowserWindow, ipcMain, app } from "electron"
+import { app, BrowserWindow, ipcMain } from "electron"
 import log from "electron-log"
+import { autoUpdater } from "electron-updater"
 
 export function initAutoUpdater() {
   console.log("Initializing auto-updater...")
@@ -96,9 +96,16 @@ export function initAutoUpdater() {
       await autoUpdater.downloadUpdate()
       console.log("Update download completed")
       return { success: true }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to start update:", error)
-      return { success: false, error: error.message }
+
+      let errorMessage = "Failed to start update"
+
+      if (error instanceof Error) {
+        errorMessage = error.message
+      }
+
+      return { success: false, error: errorMessage }
     }
   })
 

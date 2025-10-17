@@ -34,7 +34,7 @@ const state = {
 
   // View and state management
   view: "queue" as "queue" | "solutions" | "debug",
-  problemInfo: null,
+  problemInfo: null as IProblemStatementData | null,
   hasDebugged: false,
 
   // Processing events
@@ -55,12 +55,12 @@ const state = {
 
 // Add interfaces for helper classes
 export interface IProcessingHelperDeps {
-  getScreenshotHelper: () => ScreenshotHelper | null
+  getScreenshotHelper: () => ScreenshotHelper
   getMainWindow: () => BrowserWindow | null
   getView: () => "queue" | "solutions" | "debug"
   setView: (view: "queue" | "solutions" | "debug") => void
-  getProblemInfo: () => IProblemStatementData
-  setProblemInfo: (info: IProblemStatementData) => void
+  getProblemInfo: () => IProblemStatementData | null
+  setProblemInfo: (info: IProblemStatementData | null) => void
   getScreenshotQueue: () => string[]
   getExtraScreenshotQueue: () => string[]
   clearQueues: () => void
@@ -270,7 +270,7 @@ async function createWindow(): Promise<void> {
       // Fallback to local file if dev server is not available
       const indexPath = path.join(__dirname, "../dist/index.html")
       console.log("Falling back to:", indexPath)
-      if (fs.existsSync(indexPath)) {
+      if (fs.existsSync(indexPath) && state.mainWindow) {
         state.mainWindow.loadFile(indexPath)
       } else {
         console.error("Could not find index.html in dist folder")
@@ -391,7 +391,7 @@ function handleWindowClosed(): void {
 
 // Window visibility functions
 function hideMainWindow(): void {
-  if (!state.mainWindow?.isDestroyed()) {
+  if (state.mainWindow && !state.mainWindow?.isDestroyed()) {
     const bounds = state.mainWindow.getBounds();
     state.windowPosition = { x: bounds.x, y: bounds.y };
     state.windowSize = { width: bounds.width, height: bounds.height };
@@ -403,7 +403,7 @@ function hideMainWindow(): void {
 }
 
 function showMainWindow(): void {
-  if (!state.mainWindow?.isDestroyed()) {
+  if (state.mainWindow && !state.mainWindow?.isDestroyed()) {
     if (state.windowPosition && state.windowSize) {
       state.mainWindow.setBounds({
         ...state.windowPosition,
@@ -474,7 +474,7 @@ function moveWindowVertical(updateFn: (y: number) => number): void {
 
 // Window dimension functions
 function setWindowDimensions(width: number, height: number): void {
-  if (!state.mainWindow?.isDestroyed()) {
+  if (state.mainWindow && !state.mainWindow?.isDestroyed()) {
     const [currentX, currentY] = state.mainWindow.getPosition()
     const primaryDisplay = screen.getPrimaryDisplay()
     const workArea = primaryDisplay.workAreaSize
@@ -632,11 +632,11 @@ function getScreenshotHelper(): ScreenshotHelper | null {
   return state.screenshotHelper
 }
 
-function getProblemInfo(): IProblemStatementData {
+function getProblemInfo(): IProblemStatementData | null {
   return state.problemInfo
 }
 
-function setProblemInfo(problemInfo: IProblemStatementData): void {
+function setProblemInfo(problemInfo: IProblemStatementData | null): void {
   state.problemInfo = problemInfo
 }
 

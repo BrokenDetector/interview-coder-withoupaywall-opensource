@@ -268,7 +268,7 @@ export class ProcessingHelper {
         )
 
         // Filter out any nulls from failed screenshots
-        const validScreenshots = screenshots.filter(Boolean);
+        const validScreenshots = screenshots.filter(Boolean) as {path: string; preview: string; data: string;}[]
 
         if (validScreenshots.length === 0) {
           throw new Error("Failed to load screenshot data");
@@ -380,7 +380,7 @@ export class ProcessingHelper {
         )
 
         // Filter out any nulls from failed screenshots
-        const validScreenshots = screenshots.filter(Boolean);
+        const validScreenshots = screenshots.filter(Boolean) as {path: string; preview: string; data: string;}[]
 
         if (validScreenshots.length === 0) {
           throw new Error("Failed to load screenshot data for debugging");
@@ -492,7 +492,15 @@ export class ProcessingHelper {
 
         // Parse the response
         try {
-          const responseText = extractionResponse.choices[0].message.content;
+          const responseText = extractionResponse.choices[0].message.content
+
+          if (!responseText) {
+            return {
+              success: false,
+              error: "No response text received"
+            };
+          }
+
           // Handle when OpenAI might wrap the JSON in markdown code blocks
           const jsonText = responseText.replace(/```json|```/g, '').trim();
           problemInfo = JSON.parse(jsonText);
@@ -879,6 +887,13 @@ Your solution should be efficient, well-commented, and handle edge cases.
         }
       }
 
+      if (!responseContent) {
+        return {
+          success: false,
+          error: "No response content received"
+        };
+      }
+
       // Extract parts from the response
       const codeMatch = responseContent.match(/```(?:\w+)?\s*([\s\S]*?)```/);
       const code = codeMatch ? codeMatch[1].trim() : responseContent;
@@ -1246,6 +1261,13 @@ If you include code examples, use proper markdown code blocks with language spec
           message: "Debug analysis complete",
           progress: 100
         });
+      }
+
+      if (!debugContent) {
+        return {
+          success: false,
+          error: "No debug content received"
+        };
       }
 
       let extractedCode = "// Debug mode - see analysis below";
