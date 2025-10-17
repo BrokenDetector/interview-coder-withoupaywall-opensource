@@ -14,5 +14,6 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["*.ts", "ConfigHelper.ts", "../src/types/electron.d.ts"]
+  "include": ["*.ts", "ConfigHelper.ts", "../src/types/electron.d.ts"],
+  "extends": "../tsconfig"
 }
