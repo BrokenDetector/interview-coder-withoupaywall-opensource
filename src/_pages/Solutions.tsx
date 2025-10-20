@@ -1,4 +1,3 @@
-// Solutions.tsx
 import { useQueryClient } from "@tanstack/react-query"
 import React, { useEffect, useRef, useState } from "react"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
@@ -8,7 +7,7 @@ import ScreenshotQueue from "../components/Queue/ScreenshotQueue"
 
 import SolutionCommands from "../components/Solutions/SolutionCommands"
 import { useToast } from "../contexts/toast"
-import { IProblemStatementData } from "../types/solutions"
+import { IProblemStatementData } from "../types/ipc"
 import { COMMAND_KEY } from "../utils/platform"
 import Debug from "./Debug"
 
@@ -165,7 +164,7 @@ export const ComplexitySection = ({
   );
 }
 
-export interface SolutionsProps {
+interface SolutionsProps {
   setView: (view: "queue" | "solutions" | "debug") => void
   currentLanguage: string
   setLanguage: (language: string) => void

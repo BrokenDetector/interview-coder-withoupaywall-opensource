@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from "react"
 import { useToast } from "../../contexts/toast"
-import { supabase } from "../../lib/supabase"
 import { Screenshot } from "../../types/screenshots"
 import { COMMAND_KEY } from "../../utils/platform"
 import { LanguageSelector } from "../shared/LanguageSelector"
 
-export interface SolutionCommandsProps {
+interface SolutionCommandsProps {
   onTooltipVisibilityChange: (visible: boolean, height: number) => void
   isProcessing: boolean
   screenshots?: Screenshot[]
@@ -19,10 +18,6 @@ const handleSignOut = async () => {
     // Clear any local storage or electron-specific data first
     localStorage.clear()
     sessionStorage.clear()
-
-    // Then sign out from Supabase
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
   } catch (err) {
     console.error("Error signing out:", err)
   }
