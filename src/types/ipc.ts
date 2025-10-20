@@ -13,5 +13,11 @@ export interface IDebugPayload {
 	space_complexity: string;
 }
 
+export interface IProblemStatementData {
+	problem_statement: string
+	constraints: string
+	example_input: string
+	example_output: string
+}
+
 export type { UpdateDownloadedEvent, UpdateInfo } from "electron-updater";
-export type { IProblemStatementData } from "./solutions";
