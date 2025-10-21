@@ -1,0 +1,7 @@
+build
+coverage
+dist
+dist-electron
+.github
+*.md
+*.html
