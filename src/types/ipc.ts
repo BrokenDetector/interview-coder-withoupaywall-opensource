@@ -14,10 +14,10 @@ export interface IDebugPayload {
 }
 
 export interface IProblemStatementData {
-	problem_statement: string
-	constraints: string
-	example_input: string
-	example_output: string
+	problem_statement: string;
+	constraints: string;
+	example_input: string;
+	example_output: string;
 }
 
 export type { UpdateDownloadedEvent, UpdateInfo } from "electron-updater";
