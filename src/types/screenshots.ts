@@ -1,4 +1,4 @@
 export interface Screenshot {
-  path: string
-  preview: string
+	path: string;
+	preview: string;
 }
