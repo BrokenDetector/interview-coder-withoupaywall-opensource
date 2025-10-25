@@ -65,7 +65,9 @@ export class ProcessingHelper {
 
 		try {
 			const config = configHelper.loadConfig();
-			if (!config.apiKey) {
+			const apiKey = configHelper.getActiveApiKey();
+
+			if (!apiKey) {
 				console.warn(`No API key provided for ${config.apiProvider}. Client not initialized.`);
 				return;
 			}
@@ -73,19 +75,19 @@ export class ProcessingHelper {
 			switch (config.apiProvider) {
 				case "openai":
 					this.openaiClient = new OpenAI({
-						apiKey: config.apiKey,
+						apiKey: apiKey,
 						timeout: 60000,
 						maxRetries: 2,
 					});
 					console.log("OpenAI client initialized successfully");
 					break;
 				case "gemini":
-					this.geminiApiKey = config.apiKey;
+					this.geminiApiKey = apiKey;
 					console.log("Gemini API key set successfully");
 					break;
 				case "anthropic":
 					this.anthropicClient = new Anthropic({
-						apiKey: config.apiKey,
+						apiKey: apiKey,
 						timeout: 60000,
 						maxRetries: 2,
 					});

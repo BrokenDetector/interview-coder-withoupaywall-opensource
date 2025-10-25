@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Config } from "../../../electron/ConfigHelper";
 import { useToast } from "../../contexts/toast";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
@@ -168,9 +169,21 @@ interface SettingsDialogProps {
 	onOpenChange?: (open: boolean) => void;
 }
 
+interface ApiKeySectionProps {
+	openaiKey: string;
+	setOpenaiKey: Dispatch<SetStateAction<string>>;
+	geminiKey: string;
+	setGeminiKey: Dispatch<SetStateAction<string>>;
+	anthropicKey: string;
+	setAnthropicKey: Dispatch<SetStateAction<string>>;
+	apiProvider: APIProvider;
+}
+
 export function SettingsDialog({ open: externalOpen, onOpenChange }: SettingsDialogProps) {
 	const [open, setOpen] = useState(externalOpen || false);
-	const [apiKey, setApiKey] = useState("");
+	const [openaiKey, setOpenaiKey] = useState("");
+	const [geminiKey, setGeminiKey] = useState("");
+	const [anthropicKey, setAnthropicKey] = useState("");
 	const [apiProvider, setApiProvider] = useState<APIProvider>("openai");
 	const [extractionModel, setExtractionModel] = useState("gpt-4o");
 	const [solutionModel, setSolutionModel] = useState("gpt-4o");
@@ -198,18 +211,13 @@ export function SettingsDialog({ open: externalOpen, onOpenChange }: SettingsDia
 	useEffect(() => {
 		if (open) {
 			setIsLoading(true);
-			interface Config {
-				apiKey?: string;
-				apiProvider?: APIProvider;
-				extractionModel?: string;
-				solutionModel?: string;
-				debuggingModel?: string;
-			}
 
 			window.electronAPI
 				.getConfig()
 				.then((config: Config) => {
-					setApiKey(config.apiKey || "");
+					setOpenaiKey(config.openaiApiKey || "");
+					setGeminiKey(config.geminiApiKey || "");
+					setAnthropicKey(config.anthropicApiKey || "");
 					setApiProvider(config.apiProvider || "openai");
 					setExtractionModel(config.extractionModel || "gpt-4o");
 					setSolutionModel(config.solutionModel || "gpt-4o");
@@ -249,7 +257,9 @@ export function SettingsDialog({ open: externalOpen, onOpenChange }: SettingsDia
 		setIsLoading(true);
 		try {
 			const result = await window.electronAPI.updateConfig({
-				apiKey,
+				openaiApiKey: openaiKey,
+				geminiApiKey: geminiKey,
+				anthropicApiKey: anthropicKey,
 				apiProvider,
 				extractionModel,
 				solutionModel,
@@ -273,15 +283,17 @@ export function SettingsDialog({ open: externalOpen, onOpenChange }: SettingsDia
 		}
 	};
 
-	// Mask API key for display
-	const maskApiKey = (key: string) => {
-		if (!key || key.length < 10) return "";
-		return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
-	};
-
-	// Open external link handler
-	const openExternalLink = (url: string) => {
-		window.electronAPI.openLink(url);
+	const getActiveKey = () => {
+		switch (apiProvider) {
+			case "openai":
+				return openaiKey;
+			case "gemini":
+				return geminiKey;
+			case "anthropic":
+				return anthropicKey;
+			default:
+				return "";
+		}
 	};
 
 	return (
@@ -317,198 +329,71 @@ export function SettingsDialog({ open: externalOpen, onOpenChange }: SettingsDia
 					<div className="space-y-2">
 						<label className="text-sm font-medium text-white">API Provider</label>
 						<div className="flex gap-2">
-							<div
-								className={`flex-1 p-2 rounded-lg cursor-pointer transition-colors ${
-									apiProvider === "openai"
-										? "bg-white/10 border border-white/20"
-										: "bg-black/30 border border-white/5 hover:bg-white/5"
-								}`}
-								onClick={() => handleProviderChange("openai")}
-							>
-								<div className="flex items-center gap-2">
-									<div className={`w-3 h-3 rounded-full ${apiProvider === "openai" ? "bg-white" : "bg-white/20"}`} />
-									<div className="flex flex-col">
-										<p className="font-medium text-white text-sm">OpenAI</p>
-										<p className="text-xs text-white/60">GPT-4o models</p>
+							{(["openai", "gemini", "anthropic"] as const).map((provider) => (
+								<div
+									key={provider}
+									className={`flex-1 p-2 rounded-lg cursor-pointer transition-colors ${
+										apiProvider === provider
+											? "bg-white/10 border border-white/20"
+											: "bg-black/30 border border-white/5 hover:bg-white/5"
+									}`}
+									onClick={() => handleProviderChange(provider)}
+								>
+									<div className="flex items-center gap-2">
+										<div className={`w-3 h-3 rounded-full ${apiProvider === provider ? "bg-white" : "bg-white/20"}`} />
+										<div className="flex flex-col">
+											<p className="font-medium text-white text-sm">
+												{provider === "openai" ? "OpenAI" : provider === "gemini" ? "Gemini" : "Claude"}
+											</p>
+											<p className="text-xs text-white/60">
+												{provider === "openai"
+													? "GPT-4o models"
+													: provider === "gemini"
+														? "Gemini 1.5 models"
+														: "Claude 3 models"}
+											</p>
+										</div>
 									</div>
 								</div>
-							</div>
-							<div
-								className={`flex-1 p-2 rounded-lg cursor-pointer transition-colors ${
-									apiProvider === "gemini"
-										? "bg-white/10 border border-white/20"
-										: "bg-black/30 border border-white/5 hover:bg-white/5"
-								}`}
-								onClick={() => handleProviderChange("gemini")}
-							>
-								<div className="flex items-center gap-2">
-									<div className={`w-3 h-3 rounded-full ${apiProvider === "gemini" ? "bg-white" : "bg-white/20"}`} />
-									<div className="flex flex-col">
-										<p className="font-medium text-white text-sm">Gemini</p>
-										<p className="text-xs text-white/60">Gemini 1.5 models</p>
-									</div>
-								</div>
-							</div>
-							<div
-								className={`flex-1 p-2 rounded-lg cursor-pointer transition-colors ${
-									apiProvider === "anthropic"
-										? "bg-white/10 border border-white/20"
-										: "bg-black/30 border border-white/5 hover:bg-white/5"
-								}`}
-								onClick={() => handleProviderChange("anthropic")}
-							>
-								<div className="flex items-center gap-2">
-									<div className={`w-3 h-3 rounded-full ${apiProvider === "anthropic" ? "bg-white" : "bg-white/20"}`} />
-									<div className="flex flex-col">
-										<p className="font-medium text-white text-sm">Claude</p>
-										<p className="text-xs text-white/60">Claude 3 models</p>
-									</div>
-								</div>
-							</div>
+							))}
 						</div>
 					</div>
 
 					<div className="space-y-2">
-						<label className="text-sm font-medium text-white" htmlFor="apiKey">
-							{apiProvider === "openai"
-								? "OpenAI API Key"
-								: apiProvider === "gemini"
-									? "Gemini API Key"
-									: "Anthropic API Key"}
-						</label>
-						<Input
-							id="apiKey"
-							type="password"
-							value={apiKey}
-							onChange={(e) => setApiKey(e.target.value)}
-							placeholder={
-								apiProvider === "openai"
-									? "sk-..."
-									: apiProvider === "gemini"
-										? "Enter your Gemini API key"
-										: "sk-ant-..."
-							}
-							className="bg-black/50 border-white/10 text-white"
+						<ApiKeySection
+							openaiKey={openaiKey}
+							geminiKey={geminiKey}
+							anthropicKey={anthropicKey}
+							setOpenaiKey={setOpenaiKey}
+							setGeminiKey={setGeminiKey}
+							setAnthropicKey={setAnthropicKey}
+							apiProvider={apiProvider}
 						/>
-						{apiKey && <p className="text-xs text-white/50">Current: {maskApiKey(apiKey)}</p>}
-						<p className="text-xs text-white/50">
-							Your API key is stored locally and never sent to any server except{" "}
-							{apiProvider === "openai" ? "OpenAI" : "Google"}
-						</p>
-						<div className="mt-2 p-2 rounded-md bg-white/5 border border-white/10">
-							<p className="text-xs text-white/80 mb-1">Don't have an API key?</p>
-							{apiProvider === "openai" ? (
-								<>
-									<p className="text-xs text-white/60 mb-1">
-										1. Create an account at{" "}
-										<button
-											onClick={() => openExternalLink("https://platform.openai.com/signup")}
-											className="text-blue-400 hover:underline cursor-pointer"
-										>
-											OpenAI
-										</button>
-									</p>
-									<p className="text-xs text-white/60 mb-1">
-										2. Go to{" "}
-										<button
-											onClick={() => openExternalLink("https://platform.openai.com/api-keys")}
-											className="text-blue-400 hover:underline cursor-pointer"
-										>
-											API Keys
-										</button>{" "}
-										section
-									</p>
-									<p className="text-xs text-white/60">3. Create a new secret key and paste it here</p>
-								</>
-							) : apiProvider === "gemini" ? (
-								<>
-									<p className="text-xs text-white/60 mb-1">
-										1. Create an account at{" "}
-										<button
-											onClick={() => openExternalLink("https://aistudio.google.com/")}
-											className="text-blue-400 hover:underline cursor-pointer"
-										>
-											Google AI Studio
-										</button>
-									</p>
-									<p className="text-xs text-white/60 mb-1">
-										2. Go to the{" "}
-										<button
-											onClick={() => openExternalLink("https://aistudio.google.com/app/apikey")}
-											className="text-blue-400 hover:underline cursor-pointer"
-										>
-											API Keys
-										</button>{" "}
-										section
-									</p>
-									<p className="text-xs text-white/60">3. Create a new API key and paste it here</p>
-								</>
-							) : (
-								<>
-									<p className="text-xs text-white/60 mb-1">
-										1. Create an account at{" "}
-										<button
-											onClick={() => openExternalLink("https://console.anthropic.com/signup")}
-											className="text-blue-400 hover:underline cursor-pointer"
-										>
-											Anthropic
-										</button>
-									</p>
-									<p className="text-xs text-white/60 mb-1">
-										2. Go to the{" "}
-										<button
-											onClick={() => openExternalLink("https://console.anthropic.com/settings/keys")}
-											className="text-blue-400 hover:underline cursor-pointer"
-										>
-											API Keys
-										</button>{" "}
-										section
-									</p>
-									<p className="text-xs text-white/60">3. Create a new API key and paste it here</p>
-								</>
-							)}
-						</div>
 					</div>
 
 					<div className="space-y-2 mt-4">
 						<label className="text-sm font-medium text-white mb-2 block">Keyboard Shortcuts</label>
 						<div className="bg-black/30 border border-white/10 rounded-lg p-3">
 							<div className="grid grid-cols-2 gap-y-2 text-xs">
-								<div className="text-white/70">Toggle Visibility</div>
-								<div className="text-white/90 font-mono">Ctrl+B / Cmd+B</div>
-
-								<div className="text-white/70">Take Screenshot</div>
-								<div className="text-white/90 font-mono">Ctrl+H / Cmd+H</div>
-
-								<div className="text-white/70">Process Screenshots</div>
-								<div className="text-white/90 font-mono">Ctrl+Enter / Cmd+Enter</div>
-
-								<div className="text-white/70">Delete Last Screenshot</div>
-								<div className="text-white/90 font-mono">Ctrl+L / Cmd+L</div>
-
-								<div className="text-white/70">Reset View</div>
-								<div className="text-white/90 font-mono">Ctrl+R / Cmd+R</div>
-
-								<div className="text-white/70">Quit Application</div>
-								<div className="text-white/90 font-mono">Ctrl+Q / Cmd+Q</div>
-
-								<div className="text-white/70">Move Window</div>
-								<div className="text-white/90 font-mono">Ctrl+Arrow Keys</div>
-
-								<div className="text-white/70">Decrease Opacity</div>
-								<div className="text-white/90 font-mono">Ctrl+[ / Cmd+[</div>
-
-								<div className="text-white/70">Increase Opacity</div>
-								<div className="text-white/90 font-mono">Ctrl+] / Cmd+]</div>
-
-								<div className="text-white/70">Zoom Out</div>
-								<div className="text-white/90 font-mono">Ctrl+- / Cmd+-</div>
-
-								<div className="text-white/70">Reset Zoom</div>
-								<div className="text-white/90 font-mono">Ctrl+0 / Cmd+0</div>
-
-								<div className="text-white/70">Zoom In</div>
-								<div className="text-white/90 font-mono">Ctrl+= / Cmd+=</div>
+								{[
+									["Toggle Visibility", "Ctrl+B / Cmd+B"],
+									["Take Screenshot", "Ctrl+H / Cmd+H"],
+									["Process Screenshots", "Ctrl+Enter / Cmd+Enter"],
+									["Delete Last Screenshot", "Ctrl+L / Cmd+L"],
+									["Reset View", "Ctrl+R / Cmd+R"],
+									["Quit Application", "Ctrl+Q / Cmd+Q"],
+									["Move Window", "Ctrl+Arrow Keys"],
+									["Decrease Opacity", "Ctrl+[ / Cmd+["],
+									["Increase Opacity", "Ctrl+] / Cmd+]"],
+									["Zoom Out", "Ctrl+- / Cmd+-"],
+									["Reset Zoom", "Ctrl+0 / Cmd+0"],
+									["Zoom In", "Ctrl+= / Cmd+="],
+								].map(([label, shortcut], i) => (
+									<div key={i}>
+										<div className="text-white/70">{label}</div>
+										<div className="text-white/90 font-mono">{shortcut}</div>
+									</div>
+								))}
 							</div>
 						</div>
 					</div>
@@ -588,12 +473,106 @@ export function SettingsDialog({ open: externalOpen, onOpenChange }: SettingsDia
 					<Button
 						className="px-4 py-3 bg-white text-black rounded-xl font-medium hover:bg-white/90 transition-colors"
 						onClick={handleSave}
-						disabled={isLoading || !apiKey}
+						disabled={isLoading || !getActiveKey()}
 					>
 						{isLoading ? "Saving..." : "Save Settings"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+function ApiKeySection({
+	openaiKey,
+	setOpenaiKey,
+	geminiKey,
+	setGeminiKey,
+	anthropicKey,
+	setAnthropicKey,
+	apiProvider,
+}: ApiKeySectionProps) {
+	const keyMap = {
+		openai: { key: openaiKey, setKey: setOpenaiKey, label: "OpenAI API Key", placeholder: "sk-..." },
+		gemini: {
+			key: geminiKey,
+			setKey: setGeminiKey,
+			label: "Gemini API Key",
+			placeholder: "Enter your Gemini API key",
+		},
+		anthropic: { key: anthropicKey, setKey: setAnthropicKey, label: "Anthropic API Key", placeholder: "sk-ant-..." },
+	};
+
+	const { key, setKey, label, placeholder } = keyMap[apiProvider];
+
+	const links =
+		apiProvider === "openai"
+			? [
+					{ text: "OpenAI", url: "https://platform.openai.com/signup" },
+					{ text: "API Keys", url: "https://platform.openai.com/api-keys" },
+				]
+			: apiProvider === "gemini"
+				? [
+						{ text: "Google AI Studio", url: "https://aistudio.google.com/" },
+						{ text: "API Keys", url: "https://aistudio.google.com/app/apikey" },
+					]
+				: [
+						{ text: "Anthropic", url: "https://console.anthropic.com/signup" },
+						{ text: "API Keys", url: "https://console.anthropic.com/settings/keys" },
+					];
+
+	// Mask API key for display
+	const maskApiKey = (key: string) => {
+		if (!key || key.length < 10) return "";
+		return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
+	};
+
+	// Open external link handler
+	const openExternalLink = (url: string) => {
+		window.electronAPI.openLink(url);
+	};
+
+	return (
+		<>
+			<label className="text-sm font-medium text-white" htmlFor="apiKey">
+				{label}
+			</label>
+			<Input
+				id="apiKey"
+				value={key}
+				type="password"
+				placeholder={placeholder}
+				onChange={(e) => setKey(e.target.value)}
+				className="bg-black/50 border-white/10 text-white"
+			/>
+			{key && <p className="text-xs text-white/50">Current: {maskApiKey(key)}</p>}
+			<p className="text-xs text-white/50">
+				Your API key is stored locally and never sent to any server except{" "}
+				{apiProvider === "openai" ? "OpenAI" : apiProvider === "gemini" ? "Google" : "Anthropic"}
+			</p>
+			<div className="mt-2 p-2 rounded-md bg-white/5 border border-white/10">
+				<p className="text-xs text-white/80 mb-1">Don't have an API key?</p>
+				<p className="text-xs text-white/60 mb-1">
+					1. Create an account at{" "}
+					<button
+						onClick={() => openExternalLink(links[0].url)}
+						className="text-blue-400 hover:underline cursor-pointer"
+					>
+						{links[0].text}
+					</button>
+				</p>
+				<p className="text-xs text-white/60 mb-1">
+					2. Go to the{" "}
+					<button
+						onClick={() => openExternalLink(links[1].url)}
+						className="text-blue-400 hover:underline cursor-pointer"
+					>
+						{links[1].text}
+					</button>{" "}
+					section
+				</p>
+				<p className="text-xs text-white/60">3. Create a new API key and paste it here</p>
+			</div>
+		</>
 	);
 }
