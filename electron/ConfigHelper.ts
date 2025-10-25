@@ -3,10 +3,12 @@ import { app } from "electron";
 import { EventEmitter } from "events";
 import fs from "node:fs";
 import path from "node:path";
-import { APIError as OpenAiAPIError, OpenAI } from "openai";
+import { OpenAI, APIError as OpenAiAPIError } from "openai";
 
 export interface Config {
-	apiKey: string;
+	openaiApiKey?: string;
+	geminiApiKey?: string;
+	anthropicApiKey?: string;
 	apiProvider: "openai" | "gemini" | "anthropic"; // Added provider selection
 	extractionModel: string;
 	solutionModel: string;
@@ -18,7 +20,9 @@ export interface Config {
 export class ConfigHelper extends EventEmitter {
 	private configPath: string;
 	private defaultConfig: Config = {
-		apiKey: "",
+		openaiApiKey: "",
+		geminiApiKey: "",
+		anthropicApiKey: "",
 		apiProvider: "gemini", // Default to Gemini
 		extractionModel: "gemini-2.0-flash", // Default to Flash for faster responses
 		solutionModel: "gemini-2.0-flash",
@@ -148,27 +152,9 @@ export class ConfigHelper extends EventEmitter {
 	public updateConfig(updates: Partial<Config>): Config {
 		try {
 			const currentConfig = this.loadConfig();
-			let provider = updates.apiProvider || currentConfig.apiProvider;
+			const newProvider = updates.apiProvider || currentConfig.apiProvider;
 
-			// Auto-detect provider based on API key format if a new key is provided
-			if (updates.apiKey && !updates.apiProvider) {
-				// If API key starts with "sk-", it's likely an OpenAI key
-				if (updates.apiKey.trim().startsWith("sk-")) {
-					provider = "openai";
-					console.log("Auto-detected OpenAI API key format");
-				} else if (updates.apiKey.trim().startsWith("sk-ant-")) {
-					provider = "anthropic";
-					console.log("Auto-detected Anthropic API key format");
-				} else {
-					provider = "gemini";
-					console.log("Using Gemini API key format (default)");
-				}
-
-				// Update the provider in the updates object
-				updates.apiProvider = provider;
-			}
-
-			// If provider is changing, reset models to the default for that provider
+			// If the provider is changing, reset models to defaults for the new provider
 			if (updates.apiProvider && updates.apiProvider !== currentConfig.apiProvider) {
 				if (updates.apiProvider === "openai") {
 					updates.extractionModel = "gpt-4o";
@@ -186,29 +172,35 @@ export class ConfigHelper extends EventEmitter {
 			}
 
 			// Sanitize model selections in the updates
-			if (updates.extractionModel) {
-				updates.extractionModel = this.sanitizeModelSelection(updates.extractionModel, provider);
+			if (updates.extractionModel !== undefined) {
+				updates.extractionModel = this.sanitizeModelSelection(updates.extractionModel, newProvider);
 			}
-			if (updates.solutionModel) {
-				updates.solutionModel = this.sanitizeModelSelection(updates.solutionModel, provider);
+			if (updates.solutionModel !== undefined) {
+				updates.solutionModel = this.sanitizeModelSelection(updates.solutionModel, newProvider);
 			}
-			if (updates.debuggingModel) {
-				updates.debuggingModel = this.sanitizeModelSelection(updates.debuggingModel, provider);
+			if (updates.debuggingModel !== undefined) {
+				updates.debuggingModel = this.sanitizeModelSelection(updates.debuggingModel, newProvider);
 			}
 
-			const newConfig = { ...currentConfig, ...updates };
+			const newConfig: Config = {
+				...currentConfig,
+				...updates,
+				apiProvider: newProvider,
+			};
+
 			this.saveConfig(newConfig);
 
-			// Only emit update event for changes other than opacity
-			// This prevents re-initializing the AI client when only opacity changes
-			if (
-				updates.apiKey !== undefined ||
+			const hasRelevantChange =
+				updates.openaiApiKey !== undefined ||
+				updates.geminiApiKey !== undefined ||
+				updates.anthropicApiKey !== undefined ||
 				updates.apiProvider !== undefined ||
 				updates.extractionModel !== undefined ||
 				updates.solutionModel !== undefined ||
 				updates.debuggingModel !== undefined ||
-				updates.language !== undefined
-			) {
+				updates.language !== undefined;
+
+			if (hasRelevantChange) {
 				this.emit("config-updated", newConfig);
 			}
 
@@ -223,8 +215,8 @@ export class ConfigHelper extends EventEmitter {
 	 * Check if the API key is configured
 	 */
 	public hasApiKey(): boolean {
-		const config = this.loadConfig();
-		return !!config.apiKey && config.apiKey.trim().length > 0;
+		const apiKey = configHelper.getActiveApiKey();
+		return !!apiKey && apiKey.trim().length > 0;
 	}
 
 	/**
@@ -403,6 +395,17 @@ export class ConfigHelper extends EventEmitter {
 			}
 
 			return { valid: false, error: errorMessage };
+		}
+	}
+
+	public getActiveApiKey(): string | null {
+		const config = this.loadConfig();
+		if (config.apiProvider === "openai") {
+			return config.openaiApiKey || null;
+		} else if (config.apiProvider === "gemini") {
+			return config.geminiApiKey || null;
+		} else {
+			return config.anthropicApiKey || null;
 		}
 	}
 }
